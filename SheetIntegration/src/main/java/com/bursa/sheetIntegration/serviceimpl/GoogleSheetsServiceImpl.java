@@ -47,7 +47,7 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 	private String spreadsheetId = "1ZM8zw-y8aQEAfcBaOP4FyooTE6d-Yey8AvCHkwVBO04";
 
 
-	private static final String KEY_FILE_LOCATION = "/root/project/imagedrive-344109-3f52ed9e3cef.p12";
+	private static final String KEY_FILE_LOCATION = "/imagedrive-344109-3f52ed9e3cef.p12";
 	private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
 	private static final String SERVICE_ACCOUNT_EMAIL = "sheetsfinance@imagedrive-344109.iam.gserviceaccount.com";
 	private static final String APPLICATION_NAME = "Sheetsfinance";
