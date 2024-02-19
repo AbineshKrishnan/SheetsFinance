@@ -1,8 +1,11 @@
 package com.bursa.sheetIntegration.serviceimpl;
 
+import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,13 +15,20 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.apache.logging.log4j.LogManager;
 import org.springframework.stereotype.Service;
 
 import com.bursa.sheetIntegration.service.GoogleSheetsService;
-import com.bursa.sheetIntegration.sheetconfig.GoogleSheetsConfig;
+import com.bursa.sheetIntegration.sheetconfig.SheetsQuickStart;
+import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.HttpTransport;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.sheets.v4.Sheets;
+import com.google.api.services.sheets.v4.SheetsScopes;
 import com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetRequest;
 import com.google.api.services.sheets.v4.model.CellData;
 import com.google.api.services.sheets.v4.model.ExtendedValue;
@@ -33,19 +43,36 @@ import com.google.api.services.sheets.v4.model.ValueRange;
 @Service
 public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 
-	@Autowired
-	private Sheets sheetsService;
-
-	@Autowired
-	private GoogleSheetsConfig config;
-
 //	@Value("${google.sheet.spreadsheet-id}")
 	private String spreadsheetId = "1ZM8zw-y8aQEAfcBaOP4FyooTE6d-Yey8AvCHkwVBO04";
 
-	private static final String TOKENS_DIRECTORY_PATH = "tokens";
+
+	private static final String KEY_FILE_LOCATION = "/Users/User-016/Desktop/Abinesh/Pirai/Bursa/Repository/SheetsFinance/SheetIntegration/src/main/resources/imagedrive-344109-3f52ed9e3cef.p12";
+	private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
+	private static final String SERVICE_ACCOUNT_EMAIL = "sheetsfinance@imagedrive-344109.iam.gserviceaccount.com";
+	private static final String APPLICATION_NAME = "Sheetsfinance";
+	private static final List<String> SCOPES = Collections.singletonList(SheetsScopes.SPREADSHEETS);
+	private static final org.apache.logging.log4j.Logger logger = LogManager
+			.getLogger(SheetsQuickStart.class.getName());
+
+	private Credential getCredentials(String KEY_FILE_LOCATION)
+			throws URISyntaxException, IOException, GeneralSecurityException {
+		URL fileURL = SheetsQuickStart.class.getClassLoader().getResource(KEY_FILE_LOCATION);
+		if (fileURL == null) {
+			fileURL = (new File(KEY_FILE_LOCATION)).toURI().toURL();
+		}
+		HttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
+		return new GoogleCredential.Builder().setTransport(httpTransport).setJsonFactory(JSON_FACTORY)
+				.setServiceAccountId(SERVICE_ACCOUNT_EMAIL)
+				.setServiceAccountPrivateKeyFromP12File(new File(fileURL.toURI())).setServiceAccountScopes(SCOPES)
+				.build();
+	}
 
 	public List<Map<String, Object>> getSheetData(String symbol, String type)
 			throws IOException, GeneralSecurityException {
+
+		final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+
 		String range = "Sheet1!A1:Z";
 		List<String> tickers = new ArrayList<>();
 		tickers.add("Symbols");
@@ -59,8 +86,9 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 
 		Sheets service = null;
 		try {
-			service = config.sheetsService();
-		} catch (IOException | GeneralSecurityException e) {
+			service = new Sheets.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(KEY_FILE_LOCATION))
+						.setApplicationName(APPLICATION_NAME).build();
+		} catch (URISyntaxException| IOException| GeneralSecurityException e) {
 			e.printStackTrace();
 		}
 		ValueRange body = new ValueRange().setValues(data);
@@ -76,7 +104,7 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		ValueRange response = sheetsService.spreadsheets().values().get(spreadsheetId, range).execute();
+		ValueRange response = service.spreadsheets().values().get(spreadsheetId, range).execute();
 		List<List<Object>> values = response.getValues();
 
 		if (values == null || values.isEmpty()) {
@@ -108,12 +136,22 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 
 	public List<Map<String, Object>> getSheetDataColumn(String symbol, String type, boolean report, String year)
 			throws IOException {
+		
+		NetHttpTransport HTTP_TRANSPORT = null;
+		try {
+			HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+		} catch (GeneralSecurityException| IOException e) {
+			e.printStackTrace();
+		}
+		
+		
 		String range = "Sheet2!A2:Z";
 		List<List<Object>> data = new ArrayList<>();
 		Sheets service = null;
 		try {
-			service = config.sheetsService();
-		} catch (IOException | GeneralSecurityException e) {
+			service = new Sheets.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(KEY_FILE_LOCATION))
+					.setApplicationName(APPLICATION_NAME).build();
+		} catch (IOException | GeneralSecurityException | URISyntaxException e) {
 			e.printStackTrace();
 		}
 		ValueRange body = new ValueRange().setValues(data);
@@ -137,7 +175,7 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		ValueRange response = sheetsService.spreadsheets().values().get(spreadsheetId, range).execute();
+		ValueRange response = service.spreadsheets().values().get(spreadsheetId, range).execute();
 		List<List<Object>> values = response.getValues();
 
 		if (values == null || values.isEmpty()) {
