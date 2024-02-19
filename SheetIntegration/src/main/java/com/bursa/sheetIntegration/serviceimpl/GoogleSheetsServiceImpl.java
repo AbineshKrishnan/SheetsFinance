@@ -57,7 +57,7 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 
 	private Credential getCredentials(String KEY_FILE_LOCATION)
 			throws URISyntaxException, IOException, GeneralSecurityException {
-		URL fileURL = SheetsQuickStart.class.getClassLoader().getResource(KEY_FILE_LOCATION);
+		URL fileURL = new URL(SheetsQuickStart.class.getClassLoader().getResourceAsStream(KEY_FILE_LOCATION).toString());
 		if (fileURL == null) {
 			fileURL = (new File(KEY_FILE_LOCATION)).toURI().toURL();
 		}
