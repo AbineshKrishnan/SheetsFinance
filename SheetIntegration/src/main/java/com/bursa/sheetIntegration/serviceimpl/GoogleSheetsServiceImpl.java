@@ -46,7 +46,6 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 //	@Value("${google.sheet.spreadsheet-id}")
 	private String spreadsheetId = "1ZM8zw-y8aQEAfcBaOP4FyooTE6d-Yey8AvCHkwVBO04";
 
-
 	private static final String KEY_FILE_LOCATION = "/project/imagedrive-344109-3f52ed9e3cef.p12";
 	private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
 	private static final String SERVICE_ACCOUNT_EMAIL = "sheetsfinance@imagedrive-344109.iam.gserviceaccount.com";
@@ -68,12 +67,12 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 				.build();
 	}
 
-	public List<Map<String, Object>> getSheetData(String symbol, String type)
+	public List<Map<String, Object>> getSheetData(String symbol, String formula, String sheetName)
 			throws IOException, GeneralSecurityException {
 
 		final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
 
-		String range = "Sheet1!A1:Z";
+		String range = sheetName + "!A1:Z";
 		List<String> tickers = new ArrayList<>();
 		tickers.add("Symbols");
 		tickers.add(symbol);
@@ -87,8 +86,8 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 		Sheets service = null;
 		try {
 			service = new Sheets.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(KEY_FILE_LOCATION))
-						.setApplicationName(APPLICATION_NAME).build();
-		} catch (URISyntaxException| IOException| GeneralSecurityException e) {
+					.setApplicationName(APPLICATION_NAME).build();
+		} catch (URISyntaxException | IOException | GeneralSecurityException e) {
 			e.printStackTrace();
 		}
 		ValueRange body = new ValueRange().setValues(data);
@@ -98,9 +97,8 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 			e.printStackTrace();
 		}
 
-		String formula = "=SF(\"" + symbol + "\",\"" + type + "\",\"all\")";
 		try {
-			updateCellFormula(service, spreadsheetId, "Sheet1", 1, 2, formula);
+			updateCellFormula(service, spreadsheetId, sheetName, 1, 2, formula);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -134,18 +132,17 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 		}
 	}
 
-	public List<Map<String, Object>> getSheetDataColumn(String symbol, String type, boolean report, String year)
+	public List<Map<String, Object>> getSheetDataColumn(String formula, String sheetName)
 			throws IOException {
-		
+
 		NetHttpTransport HTTP_TRANSPORT = null;
 		try {
 			HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
-		} catch (GeneralSecurityException| IOException e) {
+		} catch (GeneralSecurityException | IOException e) {
 			e.printStackTrace();
 		}
-		
-		
-		String range = "Sheet2!A2:Z";
+
+		String range = sheetName + "!A2:Z";
 		List<List<Object>> data = new ArrayList<>();
 		Sheets service = null;
 		try {
@@ -160,18 +157,9 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		String formula;
-		if (report == false && year == null) {
-			formula = "=SF(\"" + symbol + "\",\"" + type + "\",\"all\")";
-		} else if (report == true && year == null) {
-			formula = "Invalid Request";
-		} else if (report == false && year != null) {
-			formula = "=SF(\"" + symbol + "\",\"" + type + "\",\"all\",\"" + year + "\")";
-		} else {
-			formula = "=SF(\"" + symbol + "\",\"" + type + "Q\",\"all\",\"" + year + "\")";
-		}
+
 		try {
-			updateCellFormula(service, spreadsheetId, "Sheet2", 1, 1, formula);
+			updateCellFormula(service, spreadsheetId, sheetName, 1, 1, formula);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -226,6 +214,57 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 		}
 
 		throw new IllegalArgumentException("Sheet not found: " + sheetName);
+	}
+
+	public List<Map<String, Object>> getSheetDataTimeSeries(String formula, String sheetName)
+			throws IOException, GeneralSecurityException {
+		
+		NetHttpTransport HTTP_TRANSPORT = null;
+		try {
+			HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+		} catch (GeneralSecurityException | IOException e) {
+			e.printStackTrace();
+		}
+		
+		String range = sheetName + "!A2:Z";
+		List<List<Object>> data = new ArrayList<>();
+		Sheets service = null;
+		try {
+			service = new Sheets.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(KEY_FILE_LOCATION))
+					.setApplicationName(APPLICATION_NAME).build();
+		} catch (IOException | GeneralSecurityException | URISyntaxException e) {
+			e.printStackTrace();
+		}
+		ValueRange body = new ValueRange().setValues(data);
+		try {
+			service.spreadsheets().values().update(spreadsheetId, range, body).setValueInputOption("RAW").execute();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		try {
+			updateCellFormula(service, spreadsheetId, sheetName, 1, 1, formula);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		ValueRange response = service.spreadsheets().values().get(spreadsheetId, range).execute();
+		List<List<Object>> values = response.getValues();
+
+		if (values == null || values.isEmpty()) {
+			return new ArrayList<>();
+		} else {
+			List<Object> headers = values.get(0);
+
+			return values.subList(1, values.size()).stream().map(row -> {
+				Map<String, Object> rowData = new LinkedHashMap<>();
+				for (int colIndex = 0; colIndex < headers.size(); colIndex++) {
+					String header = headers.get(colIndex).toString();
+					Object value = (colIndex < row.size()) ? castToCorrectType(row.get(colIndex)) : null;
+					rowData.put(header, value);
+				}
+				return rowData;
+			}).collect(Collectors.toList());
+		}
 	}
 
 }

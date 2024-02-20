@@ -22,12 +22,38 @@ public class SheetsController {
 	@Autowired
 	private GoogleSheetsService sheetsService;
 
-	@GetMapping("/row")
-	public ResponseEntity<List<Map<String, Object>>> getSheetData(@RequestParam("search") String symbol,
-			@RequestParam("type") String type) {
+	@GetMapping("/realTimeBatch")
+	public ResponseEntity<List<Map<String, Object>>> realTimeBatch(@RequestParam("symbol") String symbol) {
 		try {
-
-			List<Map<String, Object>> sheetData = sheetsService.getSheetData(symbol, type);
+			String formula = "=SF(\"" + symbol + "\",\"realTime\",\"all\")";
+			String sheetName="Real Time Batch";
+			List<Map<String, Object>> sheetData = sheetsService.getSheetData(symbol, formula,sheetName);
+			return ResponseEntity.ok(sheetData);
+		} catch (IOException | GeneralSecurityException e) {
+			e.printStackTrace();
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
+	}
+	
+	@GetMapping("/companyInfo")
+	public ResponseEntity<List<Map<String, Object>>> companyInfo(@RequestParam("symbol") String symbol) {
+		try {
+			String formula = "=SF(\"" + symbol + "\",\"companyInfo\",\"all\")";
+			String sheetName="Company Info";
+			List<Map<String, Object>> sheetData = sheetsService.getSheetData(symbol, formula,sheetName);
+			return ResponseEntity.ok(sheetData);
+		} catch (IOException | GeneralSecurityException e) {
+			e.printStackTrace();
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
+	}
+	
+	@GetMapping("/timeSeries")
+	public ResponseEntity<List<Map<String, Object>>> timeSeries(@RequestParam("symbol") String symbol, @RequestParam("fromDate") String fromDate, @RequestParam("toDate") String toDate) {
+		try {
+			 String formula = "=SF_TIMESERIES(\""+symbol+"\",\""+fromDate+"\",\""+toDate+"\",\"\",\"all\")";
+			String sheetName="Time Series";
+			List<Map<String, Object>> sheetData = sheetsService.getSheetDataTimeSeries(formula, sheetName);
 			return ResponseEntity.ok(sheetData);
 		} catch (IOException | GeneralSecurityException e) {
 			e.printStackTrace();
@@ -35,19 +61,59 @@ public class SheetsController {
 		}
 	}
 
-	@GetMapping("/column")
-	public ResponseEntity<List<Map<String, Object>>> getSheetDataColumn(@RequestParam("search") String symbol,
-			@RequestParam("type") String type, @RequestParam(name = "report", required = false) boolean report,
-			@RequestParam(name = "year", required = false) String year) {
-
+	@GetMapping("/balanceSheet")
+	public ResponseEntity<List<Map<String, Object>>> balanceSheet(@RequestParam("symbol") String symbol, @RequestParam(name = "type") String type) {
 		try {
-			List<Map<String, Object>> sheetData = sheetsService.getSheetDataColumn(symbol, type, report, year);
+			String formula;
+			String sheetName="Balance Sheet";
+			if(type.equalsIgnoreCase("Quarterly")) {
+				formula="=SF(\"" + symbol + "\",\"historicalFinancialsBalanceQ\",\"all\",\"2019-2023\")";	
+			}else {
+				formula="=SF(\"" + symbol + "\",\"historicalFinancialsBalance\",\"all\",\"2019-2023\")";	
+			}
+			List<Map<String, Object>> sheetData = sheetsService.getSheetDataColumn(formula, sheetName);
 			return ResponseEntity.ok(sheetData);
 		} catch (IOException e) {
 			e.printStackTrace();
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
 		}
 
+	}
+	
+	@GetMapping("/incomeStatement")
+	public ResponseEntity<List<Map<String, Object>>> incomeStatement(@RequestParam("symbol") String symbol, @RequestParam(name = "type") String type) {
+		try {
+			String formula;
+			String sheetName="Income Statement";
+			if(type.equalsIgnoreCase("Quarterly")) {
+				formula="=SF(\"" + symbol + "\",\"historicalFinancialsIncomeQ\",\"all\",\"2019-2023\")";	
+			}else {
+				formula="=SF(\"" + symbol + "\",\"historicalFinancialsIncome\",\"all\",\"2019-2023\")";	
+			}
+			List<Map<String, Object>> sheetData = sheetsService.getSheetDataColumn(formula, sheetName);
+			return ResponseEntity.ok(sheetData);
+		} catch (IOException e) {
+			e.printStackTrace();
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
+	}
+	
+	@GetMapping("/cashFlow")
+	public ResponseEntity<List<Map<String, Object>>> cashFlow(@RequestParam("symbol") String symbol, @RequestParam(name = "type") String type) {
+		try {
+			String formula;
+			String sheetName="Cash Flow";
+			if(type.equalsIgnoreCase("Quarterly")) {
+				formula="=SF(\"" + symbol + "\",\"historicalFinancialsCashQ\",\"all\",\"2019-2023\")";	
+			}else {
+				formula="=SF(\"" + symbol + "\",\"historicalFinancialsCash\",\"all\",\"2019-2023\")";	
+			}
+			List<Map<String, Object>> sheetData = sheetsService.getSheetDataColumn(formula, sheetName);
+			return ResponseEntity.ok(sheetData);
+		} catch (IOException e) {
+			e.printStackTrace();
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
 	}
 	
 }

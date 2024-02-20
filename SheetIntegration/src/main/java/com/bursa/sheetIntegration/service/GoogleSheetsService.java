@@ -6,8 +6,12 @@ import java.util.List;
 import java.util.Map;
 
 public interface GoogleSheetsService {
-	List<Map<String, Object>> getSheetData(String symbol, String type) throws IOException, GeneralSecurityException;
+	List<Map<String, Object>> getSheetData(String symbol, String formula, String sheetName)
+			throws IOException, GeneralSecurityException;
 
-	List<Map<String, Object>> getSheetDataColumn(String symbol, String type, boolean report, String year)
-			throws IOException;
+	List<Map<String, Object>> getSheetDataColumn(String formula, String sheetName) throws IOException;
+
+	List<Map<String, Object>> getSheetDataTimeSeries(String formula, String sheetName)
+			throws IOException, GeneralSecurityException;
+
 }
