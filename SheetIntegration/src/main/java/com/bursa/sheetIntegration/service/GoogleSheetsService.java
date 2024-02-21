@@ -5,6 +5,8 @@ import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.Map;
 
+import com.bursa.sheetIntegration.response.SymbolSearchResponse;
+
 public interface GoogleSheetsService {
 	List<Map<String, Object>> getSheetData(String symbol, String formula, String sheetName)
 			throws IOException, GeneralSecurityException;
@@ -13,5 +15,7 @@ public interface GoogleSheetsService {
 
 	List<Map<String, Object>> getSheetDataTimeSeries(String formula, String sheetName)
 			throws IOException, GeneralSecurityException;
+
+	SymbolSearchResponse symbolSearch(String search);
 
 }

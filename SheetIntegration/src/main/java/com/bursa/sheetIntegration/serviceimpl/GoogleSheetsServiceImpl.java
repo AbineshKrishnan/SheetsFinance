@@ -14,10 +14,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
 import org.apache.logging.log4j.LogManager;
 import org.springframework.stereotype.Service;
-
+import com.bursa.sheetIntegration.entity.BursaSymbols;
+import com.bursa.sheetIntegration.entity.UsSymbols;
+import com.bursa.sheetIntegration.repository.BursaSymbolsRepository;
+import com.bursa.sheetIntegration.repository.UsSymbolsRepository;
+import com.bursa.sheetIntegration.response.SymbolSearchResponse;
+import com.bursa.sheetIntegration.response.SymbolSearchResponse.BursaSymbolSearchResponse;
+import com.bursa.sheetIntegration.response.SymbolSearchResponse.UsSymbolSearchResponse;
 import com.bursa.sheetIntegration.service.GoogleSheetsService;
 import com.bursa.sheetIntegration.sheetconfig.SheetsQuickStart;
 import com.google.api.client.auth.oauth2.Credential;
@@ -40,10 +45,16 @@ import com.google.api.services.sheets.v4.model.Spreadsheet;
 import com.google.api.services.sheets.v4.model.UpdateCellsRequest;
 import com.google.api.services.sheets.v4.model.ValueRange;
 
-@Service
-public class GoogleSheetsServiceImpl implements GoogleSheetsService {
+import lombok.RequiredArgsConstructor;
 
-//	@Value("${google.sheet.spreadsheet-id}")
+@Service
+@RequiredArgsConstructor
+public class GoogleSheetsServiceImpl implements GoogleSheetsService {
+	
+	private final BursaSymbolsRepository bursaSymbolsRepository;
+	
+	private final UsSymbolsRepository usSymbolsRepository;
+
 	private String spreadsheetId = "1ZM8zw-y8aQEAfcBaOP4FyooTE6d-Yey8AvCHkwVBO04";
 
 	private static final String KEY_FILE_LOCATION = "/project/imagedrive-344109-3f52ed9e3cef.p12";
@@ -265,6 +276,37 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 				return rowData;
 			}).collect(Collectors.toList());
 		}
+	}
+	
+	
+	public SymbolSearchResponse symbolSearch(String name) {
+		
+		SymbolSearchResponse response = new SymbolSearchResponse();
+
+		List<BursaSymbolSearchResponse> bursaSearchSymbolResponseLists = new ArrayList<>();
+		List<BursaSymbols> bursaSymbols = new ArrayList<>();
+		bursaSymbols = bursaSymbolsRepository.getSymbols(name);
+		for (BursaSymbols symbols : bursaSymbols) {
+			BursaSymbolSearchResponse bursaSearchSymbolResponseList = new BursaSymbolSearchResponse();
+			bursaSearchSymbolResponseList.setName(symbols.getCompanyName());
+			bursaSearchSymbolResponseList.setSymbol(symbols.getSymbol());
+			bursaSearchSymbolResponseList.setS3key(symbols.getS3Key());
+			bursaSearchSymbolResponseLists.add(bursaSearchSymbolResponseList);
+		}
+		
+		List<UsSymbolSearchResponse> usSearchSymbolResponseLists = new ArrayList<>();
+		List<UsSymbols> usSymbols = new ArrayList<>();
+		usSymbols = usSymbolsRepository.getSymbols(name);
+		for (UsSymbols symbols : usSymbols) {
+			UsSymbolSearchResponse usSearchSymbolResponseList = new UsSymbolSearchResponse();
+			usSearchSymbolResponseList.setName(symbols.getCompanyName());
+			usSearchSymbolResponseList.setSymbol(symbols.getSymbol());
+			usSearchSymbolResponseList.setS3key(symbols.getS3Key());
+			usSearchSymbolResponseLists.add(usSearchSymbolResponseList);
+		}
+		response.setBursaSearchSymbolResponseList(bursaSearchSymbolResponseLists);
+		response.setUsSymbolSearchResponseList(usSearchSymbolResponseLists);
+		return response;
 	}
 
 }

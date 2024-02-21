@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.bursa.sheetIntegration.response.SymbolSearchResponse;
 import com.bursa.sheetIntegration.service.GoogleSheetsService;
 
 @RestController
@@ -114,6 +115,11 @@ public class SheetsController {
 			e.printStackTrace();
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
 		}
+	}
+	
+	@GetMapping("/symbolSearch")
+	public SymbolSearchResponse symbolSearch(@RequestParam("search") String search) {
+		return sheetsService.symbolSearch(search);
 	}
 	
 }
