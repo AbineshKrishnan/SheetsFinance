@@ -7,6 +7,7 @@ import java.math.BigInteger;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.GeneralSecurityException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -46,14 +47,29 @@ import com.google.api.services.sheets.v4.model.UpdateCellsRequest;
 import com.google.api.services.sheets.v4.model.ValueRange;
 
 import lombok.RequiredArgsConstructor;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
 @Service
 @RequiredArgsConstructor
 public class GoogleSheetsServiceImpl implements GoogleSheetsService {
-	
+
 	private final BursaSymbolsRepository bursaSymbolsRepository;
-	
+
 	private final UsSymbolsRepository usSymbolsRepository;
+
+	private String accessKey = "AKIAXYKJWNQTB4PFIC2A";
+
+	private String secretkey = "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";
+
+	private Region region = Region.AP_SOUTH_1;
+
+	private String bucketName = "jahirs3";
 
 	private String spreadsheetId = "1ZM8zw-y8aQEAfcBaOP4FyooTE6d-Yey8AvCHkwVBO04";
 
@@ -143,8 +159,7 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 		}
 	}
 
-	public List<Map<String, Object>> getSheetDataColumn(String formula, String sheetName)
-			throws IOException {
+	public List<Map<String, Object>> getSheetDataColumn(String formula, String sheetName) throws IOException {
 
 		NetHttpTransport HTTP_TRANSPORT = null;
 		try {
@@ -229,14 +244,14 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 
 	public List<Map<String, Object>> getSheetDataTimeSeries(String formula, String sheetName)
 			throws IOException, GeneralSecurityException {
-		
+
 		NetHttpTransport HTTP_TRANSPORT = null;
 		try {
 			HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
 		} catch (GeneralSecurityException | IOException e) {
 			e.printStackTrace();
 		}
-		
+
 		String range = sheetName + "!A2:Z";
 		List<List<Object>> data = new ArrayList<>();
 		Sheets service = null;
@@ -277,10 +292,9 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 			}).collect(Collectors.toList());
 		}
 	}
-	
-	
+
 	public SymbolSearchResponse symbolSearch(String name) {
-		
+
 		SymbolSearchResponse response = new SymbolSearchResponse();
 
 		List<BursaSymbolSearchResponse> bursaSearchSymbolResponseLists = new ArrayList<>();
@@ -290,10 +304,10 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 			BursaSymbolSearchResponse bursaSearchSymbolResponseList = new BursaSymbolSearchResponse();
 			bursaSearchSymbolResponseList.setName(symbols.getCompanyName());
 			bursaSearchSymbolResponseList.setSymbol(symbols.getSymbol());
-			bursaSearchSymbolResponseList.setS3key(symbols.getS3Key());
+			bursaSearchSymbolResponseList.setS3key(null);
 			bursaSearchSymbolResponseLists.add(bursaSearchSymbolResponseList);
 		}
-		
+
 		List<UsSymbolSearchResponse> usSearchSymbolResponseLists = new ArrayList<>();
 		List<UsSymbols> usSymbols = new ArrayList<>();
 		usSymbols = usSymbolsRepository.getSymbols(name);
@@ -301,12 +315,37 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 			UsSymbolSearchResponse usSearchSymbolResponseList = new UsSymbolSearchResponse();
 			usSearchSymbolResponseList.setName(symbols.getCompanyName());
 			usSearchSymbolResponseList.setSymbol(symbols.getSymbol());
-			usSearchSymbolResponseList.setS3key(symbols.getS3Key());
+			String url = getPresignedUrl("Bursa/" + symbols.getS3Key(), 10);
+			if (url.isEmpty()) {
+				usSearchSymbolResponseList.setS3key(null);
+			} else {
+				usSearchSymbolResponseList.setS3key(url);
+			}
 			usSearchSymbolResponseLists.add(usSearchSymbolResponseList);
 		}
 		response.setBursaSearchSymbolResponseList(bursaSearchSymbolResponseLists);
 		response.setUsSymbolSearchResponseList(usSearchSymbolResponseLists);
 		return response;
+	}
+
+	public String getPresignedUrl(String path, int duration) {
+
+		S3Presigner s3Client = S3Presigner.builder().region(region).credentialsProvider(getCredentials()).build();
+
+		GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(bucketName).key(path).build();
+
+		GetObjectPresignRequest request = GetObjectPresignRequest.builder()
+				.signatureDuration(Duration.ofMinutes(duration)).getObjectRequest(getObjectRequest).build();
+
+		PresignedGetObjectRequest getObjectRequest2 = s3Client.presignGetObject(request);
+
+		return getObjectRequest2.url().toString();
+	}
+
+	private StaticCredentialsProvider getCredentials() {
+		AwsBasicCredentials sessionCredentials = AwsBasicCredentials.create(accessKey, secretkey);
+
+		return StaticCredentialsProvider.create(sessionCredentials);
 	}
 
 }
