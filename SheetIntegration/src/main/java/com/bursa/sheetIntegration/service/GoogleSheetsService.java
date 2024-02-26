@@ -5,6 +5,7 @@ import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.Map;
 
+import com.bursa.sheetIntegration.response.NewsResponse;
 import com.bursa.sheetIntegration.response.SymbolSearchResponse;
 
 public interface GoogleSheetsService {
@@ -17,5 +18,7 @@ public interface GoogleSheetsService {
 			throws IOException, GeneralSecurityException;
 
 	SymbolSearchResponse symbolSearch(String search);
+
+	NewsResponse getTickerNews(String search);
 
 }

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.bursa.sheetIntegration.response.NewsResponse;
 import com.bursa.sheetIntegration.response.SymbolSearchResponse;
 import com.bursa.sheetIntegration.service.GoogleSheetsService;
 
@@ -120,6 +121,11 @@ public class SheetsController {
 	@GetMapping("/symbolSearch")
 	public SymbolSearchResponse symbolSearch(@RequestParam("search") String search) {
 		return sheetsService.symbolSearch(search);
+	}
+	
+	@GetMapping("/getTickerNews")
+	public NewsResponse getnews(@RequestParam("search") String search) {
+		return sheetsService.getTickerNews(search);
 	}
 	
 }
