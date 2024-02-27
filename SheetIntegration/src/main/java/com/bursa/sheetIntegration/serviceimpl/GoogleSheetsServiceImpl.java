@@ -4,8 +4,12 @@ import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -17,13 +21,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
 import org.apache.logging.log4j.LogManager;
 import org.springframework.stereotype.Service;
+
 import com.bursa.sheetIntegration.entity.BursaSymbols;
 import com.bursa.sheetIntegration.entity.UsSymbols;
 import com.bursa.sheetIntegration.repository.BursaSymbolsRepository;
 import com.bursa.sheetIntegration.repository.UsSymbolsRepository;
 import com.bursa.sheetIntegration.response.NewsResponse;
+import com.bursa.sheetIntegration.response.NewsResponse.Feed;
 import com.bursa.sheetIntegration.response.SymbolSearchResponse;
 import com.bursa.sheetIntegration.response.SymbolSearchResponse.BursaSymbolSearchResponse;
 import com.bursa.sheetIntegration.response.SymbolSearchResponse.UsSymbolSearchResponse;
@@ -59,11 +66,6 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
-import java.net.http.HttpRequest;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpResponse;
-
 @Service
 @RequiredArgsConstructor
 public class GoogleSheetsServiceImpl implements GoogleSheetsService {
@@ -81,7 +83,7 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 	private String bucketName = "jahirs3";
 
 	private String spreadsheetId = "18-wAjva5fGMT9xud1Af1f-zAlEGxaL-EeQezCYgXfn8";
-	
+
 	private String APIKEY = "H2WLTZ4KU8D1445T";
 
 	private static final String KEY_FILE_LOCATION = "/project/imagedrive-344109-3f52ed9e3cef.p12";
@@ -359,21 +361,33 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 		return StaticCredentialsProvider.create(sessionCredentials);
 	}
 
-	public NewsResponse getTickerNews (String symbol) {
+	public NewsResponse getTickerNews(String symbol) {
 		try {
 
 			LocalDate currentDate = LocalDate.now().minusDays(5);
-	        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
-	        String formattedDate = currentDate.format(formatter);
-	        
-			String newsUrl = "https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers="+symbol+"&apikey="+APIKEY+"&limit=10&time_from="+formattedDate+"T1200";
+			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+			String formattedDate = currentDate.format(formatter);
+
+			String newsUrl = "https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=" + symbol + "&apikey="
+					+ APIKEY + "&limit=10&time_from=" + formattedDate + "T1200";
 			HttpRequest newsRequest = HttpRequest.newBuilder().uri(URI.create(newsUrl)).build();
 			HttpResponse<String> newsResponse = HttpClient.newHttpClient().send(newsRequest,
 					HttpResponse.BodyHandlers.ofString());
 
 			ObjectMapper objectNewsMapper = new ObjectMapper();
-			return objectNewsMapper.readValue(newsResponse.body(), NewsResponse.class);
-			 
+			NewsResponse alphaNewsResponse = objectNewsMapper.readValue(newsResponse.body(), NewsResponse.class);
+
+			List<Feed> feedList = new ArrayList<>();
+			if (alphaNewsResponse.getFeed().size() > 5) {
+				for (int i = 0; i <= 4; i++) {
+					
+					feedList.add(alphaNewsResponse.getFeed().get(i));
+				}
+				alphaNewsResponse.setFeed(feedList);
+				return alphaNewsResponse;
+			}
+			return alphaNewsResponse;
+
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
