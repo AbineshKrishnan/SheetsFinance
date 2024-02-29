@@ -23,14 +23,17 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.apache.logging.log4j.LogManager;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.bursa.sheetIntegration.entity.BursaSymbols;
 import com.bursa.sheetIntegration.entity.UsSymbols;
 import com.bursa.sheetIntegration.repository.BursaSymbolsRepository;
 import com.bursa.sheetIntegration.repository.UsSymbolsRepository;
+import com.bursa.sheetIntegration.response.AlphaTimeSeriesResponse;
 import com.bursa.sheetIntegration.response.NewsResponse;
 import com.bursa.sheetIntegration.response.NewsResponse.Feed;
+import com.bursa.sheetIntegration.response.Response;
 import com.bursa.sheetIntegration.response.SymbolSearchResponse;
 import com.bursa.sheetIntegration.response.SymbolSearchResponse.BursaSymbolSearchResponse;
 import com.bursa.sheetIntegration.response.SymbolSearchResponse.UsSymbolSearchResponse;
@@ -107,8 +110,10 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 				.build();
 	}
 
-	public List<Map<String, Object>> getSheetData(String symbol, String formula, String sheetName)
+	public Response getSheetData(String symbol, String formula, String sheetName)
 			throws IOException, GeneralSecurityException {
+
+		Response response = new Response();
 
 		final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
 
@@ -142,23 +147,30 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		ValueRange response = service.spreadsheets().values().get(spreadsheetId, range).execute();
-		List<List<Object>> values = response.getValues();
+		ValueRange valueRange = service.spreadsheets().values().get(spreadsheetId, range).execute();
+		List<List<Object>> values = valueRange.getValues();
 
 		if (values == null || values.isEmpty()) {
-			return new ArrayList<>();
+			response.setStatus(false);
+			response.setMessage("No data found");
+			response.setStatusCode(HttpStatus.OK.value());
+			response.setRetrievedResult(null);
+			return response;
 		} else {
 			List<Object> headers = values.get(0);
+			Map<String, Object> rowData = new LinkedHashMap<>(); // Create a single map to hold the data
 
-			return values.subList(1, values.size()).stream().map(row -> {
-				Map<String, Object> rowData = new LinkedHashMap<>();
-				for (int colIndex = 0; colIndex < headers.size(); colIndex++) {
-					String header = headers.get(colIndex).toString();
-					Object value = (colIndex < row.size()) ? castToCorrectType(row.get(colIndex)) : null;
-					rowData.put(header, value);
-				}
-				return rowData;
-			}).collect(Collectors.toList());
+			for (int colIndex = 0; colIndex < headers.size(); colIndex++) {
+				String header = headers.get(colIndex).toString();
+				Object value = (colIndex < values.get(1).size()) ? castToCorrectType(values.get(1).get(colIndex))
+						: null;
+				rowData.put(header, value);
+			}
+			response.setStatus(true);
+			response.setMessage("Success");
+			response.setStatusCode(HttpStatus.OK.value());
+			response.setRetrievedResult(rowData);
+			return response;
 		}
 	}
 
@@ -172,7 +184,9 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 		}
 	}
 
-	public List<Map<String, Object>> getSheetDataColumn(String formula, String sheetName) throws IOException {
+	public Response getSheetDataColumn(String formula, String sheetName) throws IOException {
+
+		Response response = new Response();
 
 		NetHttpTransport HTTP_TRANSPORT = null;
 		try {
@@ -202,16 +216,23 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		ValueRange response = service.spreadsheets().values().get(spreadsheetId, range).execute();
-		List<List<Object>> values = response.getValues();
+		ValueRange valueRange = service.spreadsheets().values().get(spreadsheetId, range).execute();
+		List<List<Object>> values = valueRange.getValues();
 
 		if (values == null || values.isEmpty()) {
-			return new ArrayList<>();
+			response.setStatus(false);
+			response.setMessage("No data found");
+			response.setStatusCode(HttpStatus.OK.value());
+			response.setRetrievedResult(null);
+			return response;
 		} else {
 			List<Object> firstColumn = values.stream().map(row -> (row != null && !row.isEmpty()) ? row.get(0) : null)
 					.collect(Collectors.toList());
 
-			return IntStream.range(1, values.get(0).size()).mapToObj(colIndex -> {
+			response.setStatus(true);
+			response.setMessage("Success");
+			response.setStatusCode(HttpStatus.OK.value());
+			response.setRetrievedResult(IntStream.range(1, values.get(0).size()).mapToObj(colIndex -> {
 				Map<String, Object> colData = new LinkedHashMap<>();
 				for (int rowIndex = 0; rowIndex < values.size(); rowIndex++) {
 					String header = firstColumn.get(rowIndex).toString();
@@ -221,7 +242,8 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 					colData.put(header, value);
 				}
 				return colData;
-			}).collect(Collectors.toList());
+			}).collect(Collectors.toList()));
+			return response;
 		}
 	}
 
@@ -255,8 +277,10 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 		throw new IllegalArgumentException("Sheet not found: " + sheetName);
 	}
 
-	public List<Map<String, Object>> getSheetDataTimeSeries(String formula, String sheetName)
+	public Response getSheetDataTimeSeries(String formula, String sheetName)
 			throws IOException, GeneralSecurityException {
+
+		Response response = new Response();
 
 		NetHttpTransport HTTP_TRANSPORT = null;
 		try {
@@ -286,15 +310,22 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		ValueRange response = service.spreadsheets().values().get(spreadsheetId, range).execute();
-		List<List<Object>> values = response.getValues();
+		ValueRange valueRange = service.spreadsheets().values().get(spreadsheetId, range).execute();
+		List<List<Object>> values = valueRange.getValues();
 
 		if (values == null || values.isEmpty()) {
-			return new ArrayList<>();
+			response.setStatus(false);
+			response.setMessage("No data found");
+			response.setStatusCode(HttpStatus.OK.value());
+			response.setRetrievedResult(null);
+			return response;
 		} else {
 			List<Object> headers = values.get(0);
 
-			return values.subList(1, values.size()).stream().map(row -> {
+			response.setStatus(true);
+			response.setMessage("Success");
+			response.setStatusCode(HttpStatus.OK.value());
+			response.setRetrievedResult(values.subList(1, values.size()).stream().map(row -> {
 				Map<String, Object> rowData = new LinkedHashMap<>();
 				for (int colIndex = 0; colIndex < headers.size(); colIndex++) {
 					String header = headers.get(colIndex).toString();
@@ -302,13 +333,14 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 					rowData.put(header, value);
 				}
 				return rowData;
-			}).collect(Collectors.toList());
+			}).collect(Collectors.toList()));
+			return response;
 		}
 	}
 
-	public SymbolSearchResponse symbolSearch(String name) {
-
-		SymbolSearchResponse response = new SymbolSearchResponse();
+	public Response symbolSearch(String name) {
+		Response response = new Response();
+		SymbolSearchResponse symbolSearchResponse = new SymbolSearchResponse();
 
 		List<BursaSymbolSearchResponse> bursaSearchSymbolResponseLists = new ArrayList<>();
 		List<BursaSymbols> bursaSymbols = new ArrayList<>();
@@ -336,8 +368,13 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 			}
 			usSearchSymbolResponseLists.add(usSearchSymbolResponseList);
 		}
-		response.setBursaSearchSymbolResponseList(bursaSearchSymbolResponseLists);
-		response.setUsSymbolSearchResponseList(usSearchSymbolResponseLists);
+		symbolSearchResponse.setBursaSearchSymbolResponseList(bursaSearchSymbolResponseLists);
+		symbolSearchResponse.setUsSymbolSearchResponseList(usSearchSymbolResponseLists);
+
+		response.setStatus(true);
+		response.setMessage("Success");
+		response.setStatusCode(HttpStatus.OK.value());
+		response.setRetrievedResult(symbolSearchResponse);
 		return response;
 	}
 
@@ -361,7 +398,8 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 		return StaticCredentialsProvider.create(sessionCredentials);
 	}
 
-	public NewsResponse getTickerNews(String symbol) {
+	public Response getTickerNews(String symbol) {
+		Response response = new Response();
 		try {
 
 			LocalDate currentDate = LocalDate.now().minusDays(5);
@@ -380,17 +418,57 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 			List<Feed> feedList = new ArrayList<>();
 			if (alphaNewsResponse.getFeed().size() > 5) {
 				for (int i = 0; i <= 4; i++) {
-					
+
 					feedList.add(alphaNewsResponse.getFeed().get(i));
 				}
 				alphaNewsResponse.setFeed(feedList);
-				return alphaNewsResponse;
+				response.setStatus(true);
+				response.setMessage("Success");
+				response.setStatusCode(HttpStatus.OK.value());
+				response.setRetrievedResult(alphaNewsResponse);
+				return response;
 			}
-			return alphaNewsResponse;
+			response.setStatus(true);
+			response.setMessage("Success");
+			response.setStatusCode(HttpStatus.OK.value());
+			response.setRetrievedResult(alphaNewsResponse);
+			return response;
 
 		} catch (Exception e) {
 			e.printStackTrace();
-			return null;
+			response.setStatus(false);
+			response.setMessage("INTERNAL SERVER ERROR");
+			response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			response.setRetrievedResult(null);
+			return response;
+		}
+	}
+
+	public Response getTimeSeries(String symbol) {
+		Response response = new Response();
+		try {
+			String newsUrl = "https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=" + symbol
+					+ "&apikey=" + APIKEY;
+			HttpRequest newsRequest = HttpRequest.newBuilder().uri(URI.create(newsUrl)).build();
+			HttpResponse<String> newsResponse = HttpClient.newHttpClient().send(newsRequest,
+					HttpResponse.BodyHandlers.ofString());
+
+			ObjectMapper objectNewsMapper = new ObjectMapper();
+			AlphaTimeSeriesResponse alphaTimeSerirsResponse = objectNewsMapper.readValue(newsResponse.body(),
+					AlphaTimeSeriesResponse.class);
+
+			response.setStatus(true);
+			response.setMessage("Success");
+			response.setStatusCode(HttpStatus.OK.value());
+			response.setRetrievedResult(alphaTimeSerirsResponse);
+			return response;
+		} catch (IOException | InterruptedException e) {
+			e.printStackTrace();
+			response.setStatus(false);
+			response.setMessage("INTERNAL SERVER ERROR");
+			response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			response.setRetrievedResult(null);
+			return response;
 		}
 	}
 
