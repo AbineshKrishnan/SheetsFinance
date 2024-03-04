@@ -1,6 +1,7 @@
 package com.bursa.sheetIntegration.repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,5 +15,7 @@ public interface UsSymbolsRepository extends JpaRepository<UsSymbols, UUID> {
 	
 	@Query(value = "SELECT * FROM us_symbols us WHERE company_name LIKE %:name% OR symbol LIKE %:name%", nativeQuery = true)
 	List<UsSymbols> getSymbols(String name);
+
+	Optional<UsSymbols> findBySymbol(String symbol);
 
 }
