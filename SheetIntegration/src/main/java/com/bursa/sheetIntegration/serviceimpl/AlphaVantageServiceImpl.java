@@ -33,8 +33,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AlphaVantageServiceImpl implements AlphaVantageService {
 
-	@Value("${alphavantage.apikey}")
-	private String apiKey;
+//	@Value("${alphavantage.apikey}")
+	private String apiKey = "H2WLTZ4KU8D1445T";
 
 	public Response getCompanyInfo(String symbol) {
 		Response response = new Response();
