@@ -27,41 +27,41 @@ public class AlphaVantageController {
 
 	@GetMapping("/getTimeSeries")
 	public ResponseEntity<Response> getTimeSeries(@RequestParam("symbol") String symbol) {
-		Response response = service.getCompanyInfo(symbol);
-		return ResponseEntity.ok(response);
-	}
-	
-	@GetMapping("/getTimeSeries")
-	public ResponseEntity<Response> getCompanyInfo(@RequestParam("symbol") String symbol) {
 		Response response = service.getTimeSeries(symbol);
 		return ResponseEntity.ok(response);
 	}
 	
-	@GetMapping("/getTimeSeries")
+	@GetMapping("/getCompanyInfo")
+	public ResponseEntity<Response> getCompanyInfo(@RequestParam("symbol") String symbol) {
+		Response response = service.getCompanyInfo(symbol);
+		return ResponseEntity.ok(response);
+	}
+	
+	@GetMapping("/getBalanceSheet")
 	public ResponseEntity<Response> getBalanceSheet(@RequestParam("symbol") String symbol) {
 		Response response = service.getBalanceSheet(symbol);
 		return ResponseEntity.ok(response);
 	}
 	
-	@GetMapping("/getTimeSeries")
+	@GetMapping("/getQuote")
 	public ResponseEntity<Response> getQuoteEndpoint(@RequestParam("symbol") String symbol) {
 		Response response = service.getQuoteEndpoint(symbol);
 		return ResponseEntity.ok(response);
 	}
 	
-	@GetMapping("/getTimeSeries")
+	@GetMapping("/getIncomeStatement")
 	public ResponseEntity<Response> getIncomeStatement(@RequestParam("symbol") String symbol) {
 		Response response = service.getIncomeStatement(symbol);
 		return ResponseEntity.ok(response);
 	}
 	
-	@GetMapping("/getTimeSeries")
+	@GetMapping("/getCashFlow")
 	public ResponseEntity<Response> getCashFlow(@RequestParam("symbol") String symbol) {
 		Response response = service.getCashFlow(symbol);
 		return ResponseEntity.ok(response);
 	}
 	
-	@GetMapping("/getTimeSeries")
+	@GetMapping("/getGainersAndLosers")
 	public ResponseEntity<Response> getTopGainersAndLosers() {
 		Response response = service.getTopGainersAndLosers();
 		return ResponseEntity.ok(response);
