@@ -4,16 +4,10 @@ import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.security.GeneralSecurityException;
 import java.time.Duration;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -30,16 +24,12 @@ import com.bursa.sheetIntegration.entity.BursaSymbols;
 import com.bursa.sheetIntegration.entity.UsSymbols;
 import com.bursa.sheetIntegration.repository.BursaSymbolsRepository;
 import com.bursa.sheetIntegration.repository.UsSymbolsRepository;
-import com.bursa.sheetIntegration.response.AlphaTimeSeriesResponse;
-import com.bursa.sheetIntegration.response.NewsResponse;
-import com.bursa.sheetIntegration.response.NewsResponse.Feed;
 import com.bursa.sheetIntegration.response.Response;
 import com.bursa.sheetIntegration.response.SymbolSearchResponse;
 import com.bursa.sheetIntegration.response.SymbolSearchResponse.BursaSymbolSearchResponse;
 import com.bursa.sheetIntegration.response.SymbolSearchResponse.UsSymbolSearchResponse;
 import com.bursa.sheetIntegration.service.GoogleSheetsService;
 import com.bursa.sheetIntegration.sheetconfig.SheetsQuickStart;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
@@ -86,8 +76,6 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 	private String bucketName = "jahirs3";
 
 	private String spreadsheetId = "18-wAjva5fGMT9xud1Af1f-zAlEGxaL-EeQezCYgXfn8";
-
-	private String APIKEY = "H2WLTZ4KU8D1445T";
 
 	private static final String KEY_FILE_LOCATION = "/project/imagedrive-344109-3f52ed9e3cef.p12";
 	private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
@@ -396,80 +384,6 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 		AwsBasicCredentials sessionCredentials = AwsBasicCredentials.create(accessKey, secretkey);
 
 		return StaticCredentialsProvider.create(sessionCredentials);
-	}
-
-	public Response getTickerNews(String symbol) {
-		Response response = new Response();
-		try {
-
-			LocalDate currentDate = LocalDate.now().minusDays(5);
-			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
-			String formattedDate = currentDate.format(formatter);
-
-			String newsUrl = "https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=" + symbol + "&apikey="
-					+ APIKEY + "&limit=10&time_from=" + formattedDate + "T1200";
-			HttpRequest newsRequest = HttpRequest.newBuilder().uri(URI.create(newsUrl)).build();
-			HttpResponse<String> newsResponse = HttpClient.newHttpClient().send(newsRequest,
-					HttpResponse.BodyHandlers.ofString());
-
-			ObjectMapper objectNewsMapper = new ObjectMapper();
-			NewsResponse alphaNewsResponse = objectNewsMapper.readValue(newsResponse.body(), NewsResponse.class);
-
-			List<Feed> feedList = new ArrayList<>();
-			if (alphaNewsResponse.getFeed().size() > 5) {
-				for (int i = 0; i <= 4; i++) {
-
-					feedList.add(alphaNewsResponse.getFeed().get(i));
-				}
-				alphaNewsResponse.setFeed(feedList);
-				response.setStatus(true);
-				response.setMessage("Success");
-				response.setStatusCode(HttpStatus.OK.value());
-				response.setRetrievedResult(alphaNewsResponse);
-				return response;
-			}
-			response.setStatus(true);
-			response.setMessage("Success");
-			response.setStatusCode(HttpStatus.OK.value());
-			response.setRetrievedResult(alphaNewsResponse);
-			return response;
-
-		} catch (Exception e) {
-			e.printStackTrace();
-			response.setStatus(false);
-			response.setMessage("INTERNAL SERVER ERROR");
-			response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
-			response.setRetrievedResult(null);
-			return response;
-		}
-	}
-
-	public Response getTimeSeries(String symbol) {
-		Response response = new Response();
-		try {
-			String newsUrl = "https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=" + symbol
-					+ "&apikey=" + APIKEY;
-			HttpRequest newsRequest = HttpRequest.newBuilder().uri(URI.create(newsUrl)).build();
-			HttpResponse<String> newsResponse = HttpClient.newHttpClient().send(newsRequest,
-					HttpResponse.BodyHandlers.ofString());
-
-			ObjectMapper objectNewsMapper = new ObjectMapper();
-			AlphaTimeSeriesResponse alphaTimeSerirsResponse = objectNewsMapper.readValue(newsResponse.body(),
-					AlphaTimeSeriesResponse.class);
-
-			response.setStatus(true);
-			response.setMessage("Success");
-			response.setStatusCode(HttpStatus.OK.value());
-			response.setRetrievedResult(alphaTimeSerirsResponse);
-			return response;
-		} catch (IOException | InterruptedException e) {
-			e.printStackTrace();
-			response.setStatus(false);
-			response.setMessage("INTERNAL SERVER ERROR");
-			response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
-			response.setRetrievedResult(null);
-			return response;
-		}
 	}
 
 }

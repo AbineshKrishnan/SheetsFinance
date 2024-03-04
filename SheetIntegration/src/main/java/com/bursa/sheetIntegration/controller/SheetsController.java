@@ -127,25 +127,12 @@ public class SheetsController {
 		return ResponseEntity.ok(response);
 	}
 
-	@GetMapping("/getTickerNews")
-	public ResponseEntity<Response> getnews(@RequestParam("symbol") String symbol) {
-		Response response = sheetsService.getTickerNews(symbol);
-		return ResponseEntity.ok(response);
-	}
-
-	@GetMapping("/getTimeSeries")
-	public ResponseEntity<Response> getTimeSeries(@RequestParam("symbol") String symbol) {
-		Response response = sheetsService.getTimeSeries(symbol);
-		return ResponseEntity.ok(response);
-
-	}
-	
 	@GetMapping("/prepostMarket")
 	public ResponseEntity<Response> prepostMarket(@RequestParam("symbol") String symbol) {
 		try {
 			String formula = "=SF(\"" + symbol + "\",\"prePostMarket\",\"all\")";
-			String sheetName="Prepost Market";
-			Response sheetData = sheetsService.getSheetData(symbol, formula,sheetName);
+			String sheetName = "Prepost Market";
+			Response sheetData = sheetsService.getSheetData(symbol, formula, sheetName);
 			return ResponseEntity.ok(sheetData);
 		} catch (IOException | GeneralSecurityException e) {
 			e.printStackTrace();
