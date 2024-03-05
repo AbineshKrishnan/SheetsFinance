@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import com.bursa.sheetIntegration.entity.UsSymbols;
 import com.bursa.sheetIntegration.repository.UsSymbolsRepository;
 import com.bursa.sheetIntegration.response.Response;
+import com.bursa.sheetIntegration.response.YahooGainersLosersResponse;
 import com.bursa.sheetIntegration.response.YahooTrendingTickersResponse;
 import com.bursa.sheetIntegration.response.YahooTrendingTickersResponse.TrendingTickersFinance;
 import com.bursa.sheetIntegration.service.YahooService;
@@ -27,95 +28,129 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequ
 @Service
 public class YahooServiceImpl implements YahooService {
 
-    private String trendingTickersApiUri = "https://apidojo-yahoo-finance-v1.p.rapidapi.com/market/get-trending-tickers?region=US";
+	private String trendingTickersApiUri = "https://apidojo-yahoo-finance-v1.p.rapidapi.com/market/get-trending-tickers?region=US";
 
-    private String yahooRapidApiKey = "dea2cb85e9mshd7ca5e0ca875837p16ed83jsnaacac1bdc32e";
+	private String yahooRapidApiKey = "dea2cb85e9mshd7ca5e0ca875837p16ed83jsnaacac1bdc32e";
 
-    private String yahooRapidApiHost = "apidojo-yahoo-finance-v1.p.rapidapi.com";
+	private String yahooRapidApiHost = "apidojo-yahoo-finance-v1.p.rapidapi.com";
 
-    private String accessKey = "AKIAXYKJWNQTB4PFIC2A";
+	private String accessKey = "AKIAXYKJWNQTB4PFIC2A";
 
-    private String secretkey = "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";
+	private String secretkey = "RyGeC9s+3mB2Lu+ndXokx2zjLHHJH0YcddFbRXIF";
 
-    private Region region = Region.AP_SOUTH_1;
+	private Region region = Region.AP_SOUTH_1;
 
-    private String bucketName = "jahirs3";
+	private String bucketName = "jahirs3";
 
-    @Autowired
-    private UsSymbolsRepository usSymbolsRepository;
+	@Autowired
+	private UsSymbolsRepository usSymbolsRepository;
 
-    public Response getTrendingTickers(String region) {
-    	Response response = new Response();
-        try {
-            HttpRequest httpRequest = HttpRequest.newBuilder().uri(URI.create(trendingTickersApiUri))
-                    .header("X-RapidAPI-Key", yahooRapidApiKey).header("X-RapidAPI-Host", yahooRapidApiHost)
-                    .method("GET", HttpRequest.BodyPublishers.noBody()).build();
-            HttpResponse<String> httpResponse = HttpClient.newHttpClient().send(httpRequest,
-                    HttpResponse.BodyHandlers.ofString());
+	public Response getTrendingTickers(String region) {
+		Response response = new Response();
+		try {
+			HttpRequest httpRequest = HttpRequest.newBuilder().uri(URI.create(trendingTickersApiUri))
+					.header("X-RapidAPI-Key", yahooRapidApiKey).header("X-RapidAPI-Host", yahooRapidApiHost)
+					.method("GET", HttpRequest.BodyPublishers.noBody()).build();
+			HttpResponse<String> httpResponse = HttpClient.newHttpClient().send(httpRequest,
+					HttpResponse.BodyHandlers.ofString());
 
-            ObjectMapper objectMapper = new ObjectMapper();
-            YahooTrendingTickersResponse tickersResponse = objectMapper.readValue(httpResponse.body(),
-                    YahooTrendingTickersResponse.class);
-            int count = 1;
-            for (TrendingTickersFinance.TrendingTickersQuote result : tickersResponse.getFinance().getResult().get(0)
-                    .getQuotes()) {
+			ObjectMapper objectMapper = new ObjectMapper();
+			YahooTrendingTickersResponse tickersResponse = objectMapper.readValue(httpResponse.body(),
+					YahooTrendingTickersResponse.class);
+			int count = 1;
+			for (TrendingTickersFinance.TrendingTickersQuote result : tickersResponse.getFinance().getResult().get(0)
+					.getQuotes()) {
 
-                count++;
+				count++;
 
-                Optional<UsSymbols> usSymbolsOpt = usSymbolsRepository.findBySymbol(result.getSymbol());
-                UsSymbols symbols = new UsSymbols();
-                if (usSymbolsOpt.isPresent()) {
-                    symbols = usSymbolsOpt.get();
+				Optional<UsSymbols> usSymbolsOpt = usSymbolsRepository.findBySymbol(result.getSymbol());
+				UsSymbols symbols = new UsSymbols();
+				if (usSymbolsOpt.isPresent()) {
+					symbols = usSymbolsOpt.get();
 
-                    String preSignedUrl = getPresignedUrl("Bursa/" + symbols.getS3Key(), 10);
-                    if (null != preSignedUrl && !preSignedUrl.isBlank()) {
-                        result.setImageUrl(preSignedUrl);
-                    }
-                } else {
-                    result.setImageUrl(null);
-                }
-                if (count == 6) {
-                    break;
-                }
+					String preSignedUrl = getPresignedUrl("Bursa/" + symbols.getS3Key(), 10);
+					if (null != preSignedUrl && !preSignedUrl.isBlank()) {
+						result.setImageUrl(preSignedUrl);
+					}
+				} else {
+					result.setImageUrl(null);
+				}
+				if (count == 6) {
+					break;
+				}
 
-            }
+			}
 //            s3Response.setYahooTrendingTickersResponse(tickersResponse);
 //            return s3Response;
-            response.setStatus(true);
+			response.setStatus(true);
 			response.setMessage("Success");
 			response.setStatusCode(HttpStatus.OK.value());
 			response.setRetrievedResult(tickersResponse);
 			return response;
 
-        } catch (Exception e) {
-        	e.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
 			response.setStatus(false);
 			response.setMessage("INTERNAL SERVER ERROR");
 			response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			response.setRetrievedResult(null);
 			return response;
-        }
+		}
 
-    }
+	}
 
-    public String getPresignedUrl(String path, int duration) {
+	public String getPresignedUrl(String path, int duration) {
 
-        S3Presigner s3Client = S3Presigner.builder().region(region).credentialsProvider(getCredentials()).build();
+		S3Presigner s3Client = S3Presigner.builder().region(region).credentialsProvider(getCredentials()).build();
 
-        GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(bucketName).key(path).build();
+		GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(bucketName).key(path).build();
 
-        GetObjectPresignRequest request = GetObjectPresignRequest.builder()
-                .signatureDuration(Duration.ofMinutes(duration)).getObjectRequest(getObjectRequest).build();
+		GetObjectPresignRequest request = GetObjectPresignRequest.builder()
+				.signatureDuration(Duration.ofMinutes(duration)).getObjectRequest(getObjectRequest).build();
 
-        PresignedGetObjectRequest getObjectRequest2 = s3Client.presignGetObject(request);
+		PresignedGetObjectRequest getObjectRequest2 = s3Client.presignGetObject(request);
 
-        return getObjectRequest2.url().toString();
-    }
+		return getObjectRequest2.url().toString();
+	}
 
-    private StaticCredentialsProvider getCredentials() {
-        AwsBasicCredentials sessionCredentials = AwsBasicCredentials.create(accessKey, secretkey);
+	private StaticCredentialsProvider getCredentials() {
+		AwsBasicCredentials sessionCredentials = AwsBasicCredentials.create(accessKey, secretkey);
 
-        return StaticCredentialsProvider.create(sessionCredentials);
-    }
+		return StaticCredentialsProvider.create(sessionCredentials);
+	}
+
+	public Response gainersLosersAndMostActives(String request, int count) {
+		Response response = new Response();
+		try {
+
+			YahooGainersLosersResponse yahooGainersLosersResponse = new YahooGainersLosersResponse();
+
+			String url = "https://yh-finance.p.rapidapi.com/screeners/get-symbols-by-predefined?scrIds=" + request
+					+ "&count=" + count;
+
+			HttpRequest glmRequest = HttpRequest.newBuilder().uri(URI.create(url))
+					.header("X-RapidAPI-Key", yahooRapidApiKey).header("X-RapidAPI-Host", yahooRapidApiHost).build();
+			HttpResponse<String> glmResponse = HttpClient.newHttpClient().send(glmRequest,
+					HttpResponse.BodyHandlers.ofString());
+
+			System.out.println("glmResponse :: " + glmResponse.body());
+			ObjectMapper glmMapper = new ObjectMapper();
+			yahooGainersLosersResponse = glmMapper.readValue(glmResponse.body(), YahooGainersLosersResponse.class);
+
+			response.setStatus(true);
+			response.setMessage("Success");
+			response.setStatusCode(HttpStatus.OK.value());
+			response.setRetrievedResult(yahooGainersLosersResponse);
+			return response;
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			response.setStatus(false);
+			response.setMessage("INTERNAL SERVER ERROR");
+			response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			response.setRetrievedResult(null);
+			return response;
+		}
+	}
 
 }

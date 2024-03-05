@@ -24,5 +24,11 @@ public class YahooController {
 		Response response = yahooService.getTrendingTickers(region);
 		return ResponseEntity.ok(response);
 	}
+	
+	@GetMapping("/gainersLosersAndMostActives")
+	public ResponseEntity<Response> gainersLosersAndMostActives(@RequestParam("request") String request, @RequestParam("count") int count) {
+		Response response = yahooService.gainersLosersAndMostActives(request, count);
+		return ResponseEntity.ok(response);
+	}
 
 }

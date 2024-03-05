@@ -6,4 +6,6 @@ public interface YahooService {
 
 	Response getTrendingTickers(String region);
 
+	Response gainersLosersAndMostActives(String request, int count);
+
 }
