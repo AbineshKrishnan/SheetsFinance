@@ -14,4 +14,6 @@ public interface GoogleSheetsService {
 
 	Response symbolSearch(String search);
 
+	Response checkBoolean(String symbol);
+
 }

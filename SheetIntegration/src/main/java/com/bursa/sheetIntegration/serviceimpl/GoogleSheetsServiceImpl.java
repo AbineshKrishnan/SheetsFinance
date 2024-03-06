@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -24,6 +25,7 @@ import com.bursa.sheetIntegration.entity.BursaSymbols;
 import com.bursa.sheetIntegration.entity.UsSymbols;
 import com.bursa.sheetIntegration.repository.BursaSymbolsRepository;
 import com.bursa.sheetIntegration.repository.UsSymbolsRepository;
+import com.bursa.sheetIntegration.response.BooleanResponse;
 import com.bursa.sheetIntegration.response.Response;
 import com.bursa.sheetIntegration.response.SymbolSearchResponse;
 import com.bursa.sheetIntegration.response.SymbolSearchResponse.BursaSymbolSearchResponse;
@@ -384,6 +386,32 @@ public class GoogleSheetsServiceImpl implements GoogleSheetsService {
 		AwsBasicCredentials sessionCredentials = AwsBasicCredentials.create(accessKey, secretkey);
 
 		return StaticCredentialsProvider.create(sessionCredentials);
+	}
+	
+	public Response checkBoolean(String symbol) {
+		Response response = new Response();
+		BooleanResponse booleanResponse = new BooleanResponse();
+		
+		Optional<BursaSymbols> optionalBursa = bursaSymbolsRepository.getSymbol(symbol);
+		if(optionalBursa.isEmpty()) {
+			booleanResponse.setMalaysian(false);
+			Optional<UsSymbols> optionalUs = usSymbolsRepository.findBySymbol(symbol);
+			UsSymbols usSymbols = optionalUs.get();
+			String url = getPresignedUrl("Bursa/" + usSymbols.getS3Key(), 10);
+			booleanResponse.setS3Url(url);
+			response.setStatus(true);
+			response.setMessage("Success");
+			response.setStatusCode(HttpStatus.OK.value());
+			response.setRetrievedResult(booleanResponse);
+			return response;
+		}
+		booleanResponse.setMalaysian(true);
+		booleanResponse.setS3Url(null);
+		response.setStatus(true);
+		response.setMessage("Success");
+		response.setStatusCode(HttpStatus.OK.value());
+		response.setRetrievedResult(booleanResponse);
+		return response;
 	}
 
 }

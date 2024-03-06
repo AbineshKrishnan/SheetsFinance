@@ -139,5 +139,11 @@ public class SheetsController {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
 		}
 	}
+	
+	@GetMapping("/checkBoolean")
+	public ResponseEntity<Response> checkBoolean(@RequestParam("symbol") String symbol) {
+		Response response = sheetsService.checkBoolean(symbol);
+		return ResponseEntity.ok(response);
+	}
 
 }
